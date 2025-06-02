@@ -26,6 +26,7 @@
   },
   "include": [
     "src",
-    "**/*.ts"
+    "**/*.ts",
+    "node_modules/vitest/globals.d.ts"
   ]
 }

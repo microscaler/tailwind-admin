@@ -4,7 +4,12 @@
   "scripts": {
     "dev": "vinxi dev --host 127.0.0.1 --port 4000",
     "build": "vinxi build",
-    "start": "vinxi start --host 0.0.0.0 --port 4000"
+    "start": "vinxi start --host 0.0.0.0 --port 4000",
+    "lint": "echo \"no lint yet\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "echo \"no unit tests\"",
+    "test:mutation": "echo \"no mutation tests\"",
+    "test:e2e": "echo \"no e2e tests\""
   },
   "dependencies": {
     "@solidjs/router": "^0.15.0",
@@ -15,7 +20,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.7",
-    "tailwindcss": "^4.0.7"
+    "tailwindcss": "^4.0.7",
+    "typescript": "~5.7.2"
   },
   "engines": {
     "node": ">=22"

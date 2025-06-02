@@ -1,0 +1,65 @@
+name: Solid CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-type:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: solidjs
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  unit-mutation:
+    runs-on: ubuntu-latest
+    needs: lint-type
+    defaults:
+      run:
+        working-directory: solidjs
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run test:mutation
+
+  e2e-visual:
+    runs-on: ubuntu-latest
+    needs: unit-mutation
+    defaults:
+      run:
+        working-directory: solidjs
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npm run start &
+      - run: npx wait-on http://localhost:4000
+      - run: npm run test:e2e
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: e2e-visual
+    defaults:
+      run:
+        working-directory: solidjs
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "TODO: add performance checks"

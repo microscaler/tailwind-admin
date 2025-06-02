@@ -11,69 +11,68 @@ This document describes how we structure prompts, expected outputs, and iterativ
 We have defined several agent roles, each focusing on a particular aspect of the project. The agents work in sequence or in parallel as needed:
 
 1. **CI Setup Agent**
-   - **Responsibility**: Create and maintain GitHub Actions workflows that validate both React and Solid code on every PR. Essentially, setting up the continuous integration.
+   - **Responsibility**: Create and maintain GitHub Actions workflows that validate both React and Solid code on every PR. This agent operates in **Code Mode** and can directly create or update workflow files and open pull requests.
    - **Capabilities**:
       - Generate YAML for workflows, namely:
          - `.github/workflows/react-ci.yml` (for running React app tests)
-         - `.github/workflows/solid-ci.yml` (for Solid app tests).
-         - `.github/workflows/leptos-ci.yml` (for Leptos app tests).
-      - Ensure each workflow includes jobs for: linting, type-checking, unit tests, mutation tests, E2E tests, and visual regression tests, in proper sequence:contentReference[oaicite:92]{index=92}:contentReference[oaicite:93]{index=93}. Use caching (with `actions/cache`) to speed up dependencies installation:contentReference[oaicite:94]{index=94}.
+         - `.github/workflows/solid-ci.yml` (for Solid app tests)
+         - `.github/workflows/leptos-ci.yml` (for Leptos app tests)
+      - Ensure each workflow includes jobs for: linting, type-checking, unit tests, mutation tests, E2E tests, and visual regression tests, in proper sequence. Use caching (with `actions/cache`) to speed up dependencies installation.
       - Add branch protection rules (the agent can output instructions for maintainers to configure branch protection via GitHub UI or CLI, since direct setting might not be via code).
    - **Prompt Pattern (Example)**: *“Codex, create a GitHub Actions workflow file named `react-ci.yml` that runs on every pull_request to main and includes jobs: (1) lint and type-check (npm run lint && npm run typecheck), (2) unit & mutation tests (run Vitest and Stryker), (3) e2e & visual tests (build app, serve, run Playwright tests and Storybook visual tests), (4) performance budget (Lighthouse via Playwright). Use caching for node_modules. Output the YAML.”*
-   - **Checkpoint**: A PR from this agent is successful when the workflow runs and passes on a trivial change (smoke test). This establishes the CI baseline (failing tests later will indicate issues with subsequent contributions).:contentReference[oaicite:95]{index=95}:contentReference[oaicite:96]{index=96}
+   - **Checkpoint**: A PR from this agent is successful when the workflow runs and passes on a trivial change (smoke test). This establishes the CI baseline (failing tests later will indicate issues with subsequent contributions).
 
 2. **Test-Suite Generator Agent**
-   - **Responsibility**: Build a comprehensive test suite for the existing React app, to ensure behavior is captured before migration. Focus on end-to-end scenarios and critical component rendering.
+   - **Responsibility**: Build a comprehensive test suite for the existing React app, to ensure behavior is captured before migration. This agent operates in **Code Mode** and can create or update test files and open pull requests.
    - **Capabilities**:
-      - Understand the React app’s file structure (`src/` content):contentReference[oaicite:97]{index=97} and identify core user flows: e.g., logging in, navigating via sidebar, performing CRUD on a sample entity, viewing charts:contentReference[oaicite:98]{index=98}:contentReference[oaicite:99]{index=99}.
-      - Produce **Playwright E2E test files** (TypeScript) that cover these flows, using `data-testid` attributes in the app for reliable selectors. Each test should simulate realistic user interaction and assert expected outcomes (URL changes, content appears, modals open, etc.).:contentReference[oaicite:100]{index=100}:contentReference[oaicite:101]{index=101}
-      - Produce **.feature files** (Gherkin syntax) and corresponding step definitions (optional, if we use BDD style) to describe the flows in plain language – this can help QA or future test additions:contentReference[oaicite:102]{index=102}.
+      - Understand the React app’s file structure (`src/` content) and identify core user flows: e.g., logging in, navigating via sidebar, performing CRUD on a sample entity, viewing charts.
+      - Produce **Playwright E2E test files** (TypeScript) that cover these flows, using `data-testid` attributes in the app for reliable selectors. Each test should simulate realistic user interaction and assert expected outcomes (URL changes, content appears, modals open, etc.).
+      - Produce **.feature files** (Gherkin syntax) and corresponding step definitions (optional, if we use BDD style) to describe the flows in plain language – this can help QA or future test additions.
       - Create **Storybook stories** or direct component snapshot tests for key components (like Sidebar, Header, individual widgets) – to be used for visual regression. If Storybook is not set up, the agent can propose adding it.
-   - **Prompt Pattern**: *“Codex, generate Playwright tests for the following flows in the React app: (1) Login (valid and invalid creds), (2) Sidebar navigation (click each menu, verify page loads), (3) User CRUD (create, edit, delete user on Users page), (4) Dashboard charts load with correct data). Use data-testid attributes for selectors. Each test in a separate `*.spec.ts` file under `e2e/tests/`. Also, provide a brief Gherkin feature outline for each flow.”*:contentReference[oaicite:103]{index=103}:contentReference[oaicite:104]{index=104}
-   - **Checkpoint**: The test agent’s PR is merged when the new tests all pass against the React app and meaningfully cover >80% of user interactions (we aim for high coverage):contentReference[oaicite:105]{index=105}:contentReference[oaicite:106]{index=106}. Code coverage tools or reviewing the tests will ensure thoroughness.
+   - **Prompt Pattern**: *“Codex, generate Playwright tests for the following flows in the React app: (1) Login (valid and invalid creds), (2) Sidebar navigation (click each menu, verify page loads), (3) User CRUD (create, edit, delete user on Users page), (4) Dashboard charts load with correct data). Use data-testid attributes for selectors. Each test in a separate `*.spec.ts` file under `e2e/tests/`. Also, provide a brief Gherkin feature outline for each flow.”*
+   - **Checkpoint**: The test agent’s PR is merged when the new tests all pass against the React app and meaningfully cover >80% of user interactions (we aim for high coverage). Code coverage tools or reviewing the tests will ensure thoroughness.
 
 3. **Component Port Agent**
-   - **Responsibility**: Port individual React components and pages to SolidJS (and eventually to Leptos). This agent will likely be invoked many times, once per component or logical group of components.
+   - **Responsibility**: Port individual React components and pages to SolidJS (and eventually to Leptos). This agent operates in **Code Mode** and can create or update component files and open pull requests.
    - **Capabilities**:
       - Parse a given React component file (TSX) and systematically transform it to SolidJS:
-         - Remove or replace React-specific imports (`import React from 'react'` is not needed in Solid; React hooks replaced with Solid’s):contentReference[oaicite:107]{index=107}:contentReference[oaicite:108]{index=108}.
-         - Convert stateful logic: `useState` -> `createSignal`, `useEffect` -> Solid’s `createEffect` or `onMount` (depending on the use case):contentReference[oaicite:109]{index=109}:contentReference[oaicite:110]{index=110}.
-         - Convert JSX attributes: use `class=` instead of `className`:contentReference[oaicite:111]{index=111}, use Solid’s `<For>` or `<Show>` components for loops/conditionals that were JSX expressions.
+         - Remove or replace React-specific imports (`import React from 'react'` is not needed in Solid; React hooks replaced with Solid’s).
+         - Convert stateful logic: `useState` -> `createSignal`, `useEffect` -> Solid’s `createEffect` or `onMount` (depending on the use case).
+         - Convert JSX attributes: use `class=` instead of `className`, use Solid’s `<For>` or `<Show>` components for loops/conditionals that were JSX expressions.
          - Ensure event handlers and props pass correctly (Solid uses same JSX event syntax e.g. `onClick`, and props are passed similarly, but no synthetic event pooling like React).
-         - Output the Solid component in a parallel directory (maintaining file name, e.g., `Sidebar.tsx` -> `SidebarSolid.tsx` in the Solid project structure):contentReference[oaicite:112]{index=112}.
+         - Output the Solid component in a parallel directory (maintaining file name, e.g., `Sidebar.tsx` -> `SidebarSolid.tsx` in the Solid project structure).
          - *Leptos note*: A similar approach would be taken for Rust, but likely by a different specialized agent or after Solid is done.
       - Write a basic unit test for the Solid component if possible (or adapt the React one).
       - The agent should do minimal stylistic changes – aim for the Solid component to have an identical DOM structure and Tailwind classes as the React one (so that our visual tests pass).
-   - **Prompt Pattern**: *“Codex, port the React component `src/components/Sidebar/Sidebar.tsx` to SolidJS. Steps: (1) Create `Sidebar.tsx` in `solid/src/components/Sidebar/` with analogous structure. (2) Replace React state with Solid signals: use createSignal for open/close state. (3) Replace any React effect with onMount (for any initialization). (4) Replace JSX attributes: className->class, etc. (5) Ensure the output HTML structure and classes remain the same. Provide the new SolidJS component code.”*:contentReference[oaicite:113]{index=113}:contentReference[oaicite:114]{index=114}
+   - **Prompt Pattern**: *“Codex, port the React component `src/components/Sidebar/Sidebar.tsx` to SolidJS. Steps: (1) Create `Sidebar.tsx` in `solid/src/components/Sidebar/` with analogous structure. (2) Replace React state with Solid signals: use createSignal for open/close state. (3) Replace any React effect with onMount (for any initialization). (4) Replace JSX attributes: className->class, etc. (5) Ensure the output HTML structure and classes remain the same. Provide the new SolidJS component code.”*
    - **Checkpoint**: A ported component is considered successful when:
       - It compiles in the Solid project (no TypeScript errors).
       - It passes all its associated tests (if the same Playwright or visual tests run on Solid, the component should behave the same).
-      - Visual snapshot comparison shows no significant differences compared to React (except maybe minor expected differences in attributes, but pixel output should match):contentReference[oaicite:115]{index=115}:contentReference[oaicite:116]{index=116}.
+      - Visual snapshot comparison shows no significant differences compared to React (except maybe minor expected differences in attributes, but pixel output should match).
       - The PR introducing the Solid component can be merged without breaking CI.
 
 4. **Validation & Regression Agent**
-   - **Responsibility**: After a batch of components/pages are ported, this agent verifies that everything works by running both versions and comparing results. It helps catch any divergence introduced by the porting.
+   - **Responsibility**: After a batch of components/pages are ported, this agent verifies that everything works by running both versions and comparing results. This agent operates in **Code Mode** and can create or update validation scripts, test configs, and open pull requests.
    - **Capabilities**:
       - Programmatically run the React app and Solid app (maybe in CI or locally) – e.g., start both on different ports.
       - Execute the full Playwright test suite against both. Solid’s tests should all pass. If any fail in Solid but pass in React, identify which component or functionality is failing.
-      - Take screenshots of key pages in both apps and do an image diff. Highlight any differences beyond the threshold (this could be automated via Playwright’s toMatchSnapshot or a custom diff tool):contentReference[oaicite:117]{index=117}:contentReference[oaicite:118]{index=118}.
-      - Output a report summarizing: which tests passed/failed on Solid vs React, and which visual diffs were detected (with possibly a % difference).:contentReference[oaicite:119]{index=119}:contentReference[oaicite:120]{index=120}
+      - Take screenshots of key pages in both apps and do an image diff. Highlight any differences beyond the threshold (this could be automated via Playwright’s toMatchSnapshot or a custom diff tool).
+      - Output a report summarizing: which tests passed/failed on Solid vs React, and which visual diffs were detected (with possibly a % difference).
       - This agent does *not* automatically fix things, but it provides detailed context for maintainers or triggers the Component Port Agent to re-port or adjust a component if an issue is found.
    - **Prompt Pattern**: *“Codex, run validation on the Solid app against the React baseline. Launch React app on port 3000 and Solid app on 3001. For each Playwright test scenario, run against both and ensure outcomes match. If a test fails on Solid, log which assertion failed. Also, for pages Dashboard, Users, Profile, take screenshots on both and compare pixel-wise. Report any differences >1%. Present a summary of results.”*
-   - **Checkpoint**: The agent’s output (which may be in a comment on a PR or an artifact) shows **no regressions** or clearly pinpoints issues to fix. We will likely run this agent’s routine as part of CI (perhaps as a final step in the Solid CI workflow):contentReference[oaicite:121]{index=121}:contentReference[oaicite:122]{index=122}. Success is when Solid CI passes *and* visual/performance differences are within allowed range. This agent ensures we only merge Solid changes that maintain quality.
+   - **Checkpoint**: The agent’s output (which may be in a comment on a PR or an artifact) shows **no regressions** or clearly pinpoints issues to fix. We will likely run this agent’s routine as part of CI (perhaps as a final step in the Solid CI workflow). Success is when Solid CI passes *and* visual/performance differences are within allowed range. This agent ensures we only merge Solid changes that maintain quality.
 
 5. **Documentation Agent**
-   - **Responsibility**: Keep documentation (like this file, README, ROADMAP, etc.) up-to-date as the project progresses. This agent acts whenever there’s a significant change in structure or process that needs to be reflected in docs.
+   - **Responsibility**: Keep documentation (like this file, README, ROADMAP, etc.) up-to-date as the project progresses. This agent operates in **Code Mode** and can create or update documentation files and open pull requests.
    - **Capabilities**:
-      - Update **CONTRIBUTORS.md** when new contributors join or when guidelines evolve (for example, if we add a new agent role or change our branching strategy).:contentReference[oaicite:123]{index=123}:contentReference[oaicite:124]{index=124}
-      - Update **ROADMAP.md** and **MILESTONES.md** as tasks are completed or new tasks identified. Ensure the timeline or task list reflects current reality (e.g., mark tasks as done, add new phases for Leptos after Solid is done, etc.).:contentReference[oaicite:125]{index=125}:contentReference[oaicite:126]{index=126}
+      - Update **CONTRIBUTORS.md** when new contributors join or when guidelines evolve (for example, if we add a new agent role or change our branching strategy).
+      - Update **ROADMAP.md** and **MILESTONES.md** as tasks are completed or new tasks identified. Ensure the timeline or task list reflects current reality (e.g., mark tasks as done, add new phases for Leptos after Solid is done, etc.).
       - Ensure **README.md** always accurately describes the state of the project (e.g., once the Solid version is functional, README should mention how to run it; if we archive the React version later, README should reflect that, etc.).
       - In general, ensure all references in docs (file paths, commands, version numbers) are correct after changes.
    - **Prompt Pattern**: *“Codex, the project structure changed: we moved Solid code into `/solid` directory. Update the README Installation section to mention how to install for Solid. Also update ROADMAP.md to mark milestone 1 as done and add a new milestone for Leptos exploration.”* (This would yield diffs for those files).
    - **Checkpoint**: Documentation agent’s changes are reviewed and merged when they improve clarity and accuracy of the docs. There’s no automated test for this, but maintainers will ensure the changes are factually correct. Documentation updates often accompany code changes in the same PR or can be separate documentation PRs.
 
 Each agent’s operation results in a pull request (or set of PRs). We label these PRs with the agent name (e.g., `agent:ci-setup`, `agent:porting`) for clarity.
-
 ---
 
 ## 2. Prompt Patterns & Examples

@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:unit": "echo \"no unit tests\"",
-    "test:mutation": "echo \"no mutation tests\"",
-    "test:e2e": "echo \"no e2e tests\"",
-    "preview": "vite preview"
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:mutation": "stryker run",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.15",
@@ -35,11 +36,16 @@
     "react-router": "^7.1.5",
     "simplebar-react": "^3.3.0",
     "swiper": "^11.2.3",
-    "tailwind-merge": "^3.0.1"
+    "tailwind-merge": "^3.0.1",
+    "vitest": "^3.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "@percy/cli": "^1.30.11",
+    "@percy/playwright": "^1.0.8",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.15.29",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",

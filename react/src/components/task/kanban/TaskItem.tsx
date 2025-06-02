@@ -18,7 +18,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ handlerId }, drop] = useDrop<
-    Task,
+    Task & { index: number },
     DropResult,
     { handlerId: string | symbol | null }
   >({
@@ -29,7 +29,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
       };
     },
     drop: () => ({ name: task.status }),
-    hover(item: any, monitor) {
+    hover(item: Task & { index: number }, monitor) {
       if (!ref.current) {
         return;
       }

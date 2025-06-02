@@ -1,70 +1,160 @@
 name: Leptos CI
 
+env:
+  NODE_VERSION: 20
+  BASE_DIR: leptos
+
 on:
+  workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   lint-type:
+    name: Rust Lint & Typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         working-directory: leptos
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             leptos/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('leptos/Cargo.lock') }}
-      - run: cargo fmt -- --check
-      - run: cargo check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Format check
+        run: cargo fmt -- --check
+
+      - name: Compile check
+        run: cargo check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   unit-mutation:
+    name: Unit + Mutation Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: lint-type
     defaults:
       run:
         working-directory: leptos
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            leptos/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**leptos/Cargo.lock') }}
       - run: cargo test --all
 
+      # Optional mutation test with cargo-mutants or mutagen (replace as needed)
+      # - run: cargo install cargo-mutants
+      # - run: cargo mutants -- --test-threads=1
+
   e2e-visual:
+    name: E2E + Visual Regression
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: unit-mutation
     defaults:
       run:
         working-directory: leptos
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
-      - run: echo "TODO run e2e tests"
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            leptos/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**leptos/Cargo.lock') }}
+      - name: Install cargo-leptos
+        run: cargo install cargo-leptos --version 0.2.7
+
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Update Browserslist DB
+        run: npx update-browserslist-db@latest
+
+      - name: Build Leptos App (release)
+        run: cargo leptos build --release
+
+      - name: Start Leptos Server
+        run: |
+          cargo leptos serve --release &
+          sleep 5  # Give the server time to start
+
+      - name: Install Playwright
+        run: npx tests install --with-deps
+
+      - name: Run Playwright E2E Tests
+        run: npx tests test
+
+      - name: Upload test screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-snapshots
+          path: leptos/test-results/
 
   performance:
+    name: Lighthouse Performance Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: e2e-visual
     defaults:
       run:
         working-directory: leptos
     steps:
-      - uses: actions/checkout@v3
-      - run: echo "TODO add performance checks"
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            leptos/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**leptos/Cargo.lock') }}
+      - name: Install Lighthouse CLI
+        run: npm install -g lighthouse
+
+      - name: Start Leptos Server
+        run: |
+          cargo install cargo-leptos --version 0.2.7
+          rustup target add wasm32-unknown-unknown
+          cargo leptos serve --release &
+          sleep 5
+
+      - name: Run Lighthouse against localhost
+        run: |
+          lighthouse http://localhost:3000 \
+            --output html \
+            --output-path ./lighthouse-report.html \
+            --chrome-flags="--headless"
+
+      - name: Upload Lighthouse Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: leptos/lighthouse-report.html

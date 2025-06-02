@@ -1,72 +1,179 @@
 name: React CI
 
+env:
+  NODE_VERSION: 20
+  BASE_DIR: react
+  PORT: 3000
+
+
 on:
+  workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   lint-type:
+    name: 🧹 Lint & Typecheck
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     defaults:
       run:
-        working-directory: react
+        working-directory: ${{ env.BASE_DIR }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.BASE_DIR }}/package-lock.json
+
+      - name: 📁 Cache node_modules
+        uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('react/package-lock.json') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**react/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
+
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
 
   unit-mutation:
+    name: 🧪 Unit & Mutation Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: lint-type
     defaults:
       run:
-        working-directory: react
+        working-directory: ${{ env.BASE_DIR }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.BASE_DIR }}/package-lock.json
+
+      - name: 📁 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**react/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - run: npm ci
       - run: npm run test:unit
       - run: npm run test:mutation
 
   e2e-visual:
+    name: 🎭 E2E + Visual Regression
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: unit-mutation
     defaults:
       run:
-        working-directory: react
+        working-directory: ${{ env.BASE_DIR }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
-      - run: npx serve -s dist -l 3000 &
-      - run: npx wait-on http://localhost:3000
-      - run: npm run test:e2e
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.BASE_DIR }}/package-lock.json
+
+      - name: 📁 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**react/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: 📦 Install Deps
+        run: npm ci
+
+      - name: 🔨 Build App
+        run: npm run build
+
+      - name: 🚀 Start App Server
+        run: |
+          npx serve -s dist -l ${{ env.PORT }} &> server.log &
+          npx wait-on http://localhost:${{ env.PORT }}
+
+      - name: 🎭 Install Playwright Browsers
+        run: npx tests install --with-deps
+
+      - name: 🧪 Run E2E Tests
+        run: npm run test:e2e
+
+      - name: 📸 Upload Test Artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-e2e-snapshots
+          path: ${{ env.BASE_DIR }}/test-results/
+
+
+      - name: 📄 Upload Server Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-server-logs
+          path: ${{ env.BASE_DIR }}/server.log
 
   performance:
+    name: ⚡ Performance Audit (Lighthouse)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: e2e-visual
     defaults:
       run:
-        working-directory: react
+        working-directory: ${{ env.BASE_DIR }}
     steps:
-      - uses: actions/checkout@v3
-      - run: echo "TODO add performance checks"
+      - uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.BASE_DIR }}/package-lock.json
+
+      - name: 📁 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**react/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - run: npm ci
+        working-directory: reactjs
+
+      - name: 🛰️ Start Server
+        run: |
+          npx serve -s dist -l ${{ env.PORT }} &> perf-server.log &
+          npx wait-on http://localhost:${{ env.PORT }}
+        working-directory: reactjs
+
+      - name: 📊 Run Lighthouse Audit
+        run: |
+          npm install -g lighthouse
+          lighthouse http://localhost:${{ env.PORT }} \
+            --output html \
+            --output-path=./lighthouse-report.html \
+            --chrome-flags="--headless"
+        working-directory: reactjs
+
+      - name: 📤 Upload Lighthouse Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-lighthouse-report
+          path: ${{ env.BASE_DIR }}/lighthouse-report.html

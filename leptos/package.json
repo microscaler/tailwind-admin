@@ -1,0 +1,24 @@
+{
+  "name": "leptos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "cargo leptos serve",
+    "build": "cargo leptos build --release",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:e2e:report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.29"
+  },
+  "dependencies": {
+    "@percy/playwright": "^1.0.8"
+  }
+}

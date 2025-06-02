@@ -7,11 +7,18 @@ on:
 jobs:
   lint-type:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: solidjs
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('solidjs/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -62,4 +69,4 @@ jobs:
         working-directory: solidjs
     steps:
       - uses: actions/checkout@v3
-      - run: echo "TODO: add performance checks"
+      - run: echo "TODO add performance checks"

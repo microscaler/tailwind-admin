@@ -2,7 +2,7 @@
 
 ## ROADMAP.md
 
-```markdown
+
 # TailAdmin React → SolidJS Migration Roadmap
 
 This document provides a detailed listing of all React components, pages, and utilities, and now also includes the early CI setup step. Use this as an ordered roadmap to generate code tasks for porting each item into SolidJS. References are cited from the TailAdmin documentation and repository metadata.
@@ -28,8 +28,7 @@ This document provides a detailed listing of all React components, pages, and ut
 
 ## 1. Repository Structure Overview
 
-````
-
+```bash
 free-react-tailwind-admin-dashboard/
 ├── .github/
 │   └── workflows/
@@ -102,8 +101,8 @@ free-react-tailwind-admin-dashboard/
 ├── tsconfig.json
 ├── vite.config.ts
 └── package.json
-
 ```
+
 > **Note**: The `src/components/` directory includes all UI components; `src/pages/` defines page-level routes; `context/` and `hooks/` contain shared logic; `utils/` holds helper functions; `types/` houses TypeScript interfaces. 
 
 ---
@@ -407,6 +406,3 @@ For each page, port all child components first (e.g., if `Dashboard.tsx` uses `C
   - “Includes prebuilt profile management and 404 page; Tables and Charts (Line & Bar); Authentication forms and input elements; Sophisticated sidebar.”   
 
 ---
-
-This **ROADMAP.md**—now with an initial CI setup—should be used by Codex (or any other agent) to systematically generate port tasks and track migration progress, ensuring that every pull request is automatically validated. Each bullet above represents a discrete port task, in the correct dependency order.
-```

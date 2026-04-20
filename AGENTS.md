@@ -1,5 +1,17 @@
 # Agents Configuration & Guidelines
 
+> **Desktop dev environment** — before doing anything in this repo, read the
+> Microscaler-wide topology brief. It explains that you are on a Mac but the
+> code lives on `ms02` (NFS), where commands execute for this environment, how
+> the Kind cluster and vLLM fit in, and the network constraints behind the SSH
+> tunneling. Do not duplicate its contents here — link to it. If reality drifts,
+> fix the canonical doc, not this copy.
+>
+> - GitHub: [`cylon-local-infra/docs/desktop-dev-environment.md`](https://github.com/microscaler/cylon-local-infra/blob/main/docs/desktop-dev-environment.md)
+> - On ms02 NFS: `~/Workspace/microscaler/cylon-local-infra/docs/desktop-dev-environment.md`
+
+---
+
 This document describes how we structure prompts, expected outputs, and iterative behavior for **Codex (or other AI assistants)** that autonomously assist in the React → SolidJS migration (and related tasks). We treat each major task as an “Agent” with a clear role. Every AI-generated contribution must be validated via our CI pipeline, ensuring that each generated PR is automatically tested before merge.
 
 > **Note:** These guidelines are written for human maintainers and AI alike – to understand what the AI should do. If you’re a human contributor, you can also simulate these steps manually. If you’re setting up an AI agent (via the OpenAI API, etc.), use these as the specification for its prompt engineering.

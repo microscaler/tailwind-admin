@@ -119,6 +119,65 @@ This milestone is iterative. We will break it into sub-tasks per component or pa
   repository and to TailAdmin community that a SolidJS alternative is available. This might include publishing a 
   separate npm package or just a GitHub release with the code.
 
+## 🚀 Optimization & Bundle Efficiency Milestone (Planned)
+
+This milestone focuses on reducing initial JS/WASM payloads, improving time-to-interactive (TTI), and improving long-term maintainability through better code splitting and analysis.
+
+### 🧩 Goals
+
+- Dynamically split large pages/components (dashboards, charts, maps)
+- Ensure third-party libraries like `chart.js` and `jvectormap` don’t bloat the main bundle
+- Confirm chunking strategy via `rollup-plugin-visualizer`
+- Prepare all implementations (React/Solid/Leptos) for future CDN and edge delivery
+
+---
+
+### ✅ Tasks
+
+#### 🗂 Manual Code Splitting via Vite (React only)
+- [ ] Implement `manualChunks()` in `vite.config.ts` to extract:
+  - `react`, `react-dom` → `vendor`
+  - `chart.js`, `react-chartjs-2` → `charts`
+  - `@react-jvectormap/core` → `maps`
+
+#### 📦 Dynamic Imports for Routes and Pages
+- [ ] Refactor `App.tsx` to use `React.lazy()` for pages:
+  - [ ] `/dashboard`
+  - [ ] `/charts`
+  - [ ] `/users`
+  - [ ] `/maps` (if applicable)
+- [ ] Wrap all lazy routes in `<Suspense fallback={...}>`
+
+#### 📉 Optimize Chart.js Load
+- [ ] Use `lazy(() => import(...))` inside `Charts.tsx` to defer chart libraries
+- [ ] Add `Suspense` fallback for chart components
+
+#### 🧪 Confirm Build Output
+- [ ] Run `npm run build`
+- [ ] Confirm output chunks in `dist/assets/*.js` reflect split logic
+
+#### 📊 Visualize Bundle with `rollup-plugin-visualizer`
+- [x] Plugin installed and configured
+- [x] `analyze` script added (`ANALYZE=1 npm run build`)
+- [ ] `stats.html` is uploaded in CI (React `performance` job)
+- [ ] Bundle reports reviewed weekly for regressions
+
+#### ⚙️ Optional (Later):
+- [ ] Replicate dynamic import logic in SolidJS using `lazy()` from `solid-js/web`
+- [ ] Track `.wasm` size and bundle stats in Leptos (see WASM Analysis milestone)
+
+---
+
+### 🎯 Outcome
+
+- Initial JS bundle shrinks below 500 KB uncompressed (target < 200 KB gzipped)
+- Charts and maps loaded only when used
+- All routes async-loaded
+- Visualizer (`stats.html`) is CI-tested and archived per release
+
+---
+
+
 ## Milestone 5: 🚧 Leptos (Rust/WASM) Prototype **(Upcoming)**
 
 *This milestone will start after SolidJS port is complete and stable.*
@@ -161,6 +220,47 @@ This milestone is iterative. We will break it into sub-tasks per component or pa
 - **Outcome (Milestone 5)**: A functional **Leptos prototype** of TailAdmin. It may not be 100% feature complete 
   (especially if some JS libraries don’t have Rust analogues), but it demonstrates the feasibility. We will document 
   how far we got and where contributions are needed to improve it.
+
+### 📦 Leptos Bundle Analysis (Planned)
+
+To match React and SolidJS CI features, we will integrate bundle and performance reporting for the Leptos build:
+
+#### ✅ Goals
+
+- Generate size and bundle reports for WASM + JS outputs
+- Upload artifacts to GitHub Actions CI for review
+- Enable consistent monitoring of bundle size regression over time
+
+#### 🧩 Planned Features
+
+- **WASM Size Report**
+  - Use `cargo build --release --target wasm32-unknown-unknown`
+  - Report `.wasm` size with and without `wasm-opt` compression
+  - Log output of:
+    ```bash
+    ls -lh target/wasm32-unknown-unknown/release/*.wasm
+    ```
+
+- **Optional: Bundle Breakdown**
+  - Use [`wasm-snip`](https://github.com/rustwasm/wasm-snip) + [`twiggy`](https://github.com/rustwasm/twiggy) or [`wasm-tools`](https://github.com/bytecodealliance/wasm-tools) to analyze symbol-level contributions
+  - Export call graphs or size breakdowns as `.txt` or `.json` artifacts
+
+- **Performance Artifacts**
+  - Integrate `lighthouse` against the running `cargo leptos serve`
+  - Upload `lighthouse-report.html` to CI for audit history
+
+#### 📁 CI Artifacts to Upload
+
+- `target/.../app_bg.wasm` size report
+- `wasm-opt` compressed `.wasm` file (if available)
+- `twiggy` output or function-level `.wasm` breakdown
+- `lighthouse-report.html`
+
+#### 📦 Future Enhancements
+
+- Add thresholds for `.wasm` size (e.g., fail if >1.5MB uncompressed)
+- Add `cargo leptos --features=analyze` or `RUSTFLAGS` to embed profiling hooks
+- Auto-compare `.wasm` size to previous CI run (via GitHub cache or artifact diff)
 
 
 ## Milestone 6: 🚧 Leptos Expansion **(On Hold / Future Work)**
